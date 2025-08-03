@@ -125,7 +125,7 @@ static void do_ditdat_length(int fd)
 	       dit_on, dit_off, (double)dit_on / dit_off);
 	printf("* dah: on=%d, off=%d, on/off=%.3f\n",
 	       dah_on, dah_off, (double)dah_on / dah_off);
-	printf("* dah/dit: %f\n", (double)dah_on / dit_on);
+	printf("* dah/dit: %.3f\n", (double)dah_on / dit_on);
 
 	dit_total = dit_on + dit_off;
 	dah_total = dah_on + dah_off;
