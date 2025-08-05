@@ -29,8 +29,7 @@ static int dit_on = 0, dit_off = 0, dah_on = 0, dah_off = 0;
 #define CALIB_LEN 0x2000
 #define CALIB_POS 0x0800
 
-#define SAMPLES 9
-#define RESULTS (SAMPLES - 1)
+#define RESULTS 8
 
 
 static void send_event_and_get_log(int fd, int event_entry)
@@ -42,9 +41,9 @@ static void send_event_and_get_log(int fd, int event_entry)
 }
 
 
-static int parse_event(struct event *ev, int entry, int *out)
+static int parse_event(struct event *ev, int entry, int *out, int size)
 {
-	int i, n, t[SAMPLES];
+	int i, j, n, t0, t1;
 
 	/*
 	 *    t[0]     t[1]     t[2]     t[3]     t[4]     t[5]     t[6]
@@ -57,30 +56,30 @@ static int parse_event(struct event *ev, int entry, int *out)
 	 */
 
 	n = entry;
-	for (i = 0; i < SAMPLES; i++) {
+	for (i = j = 0; i < size + 1; i++) {
 		if ((ev = find_event_entry(ev, &n, OUT_BIT,
 					   (i & 1) ? 0 : OUT_BIT)) == NULL)
-			return -1;
+			break;
 
-		t[i] = ev->pos;
+		t1 = ev->pos;
+		if (i) out[j++] = t1 - t0;
+		t0 = t1;
+
 		ev++;
 		n--;
 	}
+	for (i = j; i < size; i++) out[i] = -1;
 
 	printf("#");
-	for (i = 0; i < RESULTS; i++) {
-		out[i] = t[i + 1] - t[i];
-		printf(" %d", out[i]);
-	}
+	for (i = 0; i < size; i++) printf(" %d", out[i]);
 	printf("\n");
 
-	return 0;
+	return j;
 }
-
 
 static int get_ditdat_length(int fd, unsigned char mask, int *on_length, int *off_length)
 {
-	int i, n, u[SAMPLES];
+	int i, n, u[RESULTS];
 	struct event *ev;
 
 	set_maxpos(fd, DITDAT_LEN);
@@ -93,7 +92,7 @@ static int get_ditdat_length(int fd, unsigned char mask, int *on_length, int *of
 
 	ev = &unpacked_log[0];
 	n = DITDAT_LEN;
-	if (parse_event(ev, n, u) < 0)
+	if (parse_event(ev, n, u, RESULTS) < RESULTS)
 		return -1;
 
 	*on_length = *off_length = 0;
