@@ -7,7 +7,7 @@
 struct event {
 	unsigned short pos;
 	unsigned char val;
-	unsigned char pad;
+	unsigned char evt;
 } __attribute__((packed));
 
 #define MAX_POS 0xf000U
@@ -19,6 +19,9 @@ struct event {
 #define CMD_LOG 0x03
 #define CMD_RESULT 0x04
 #define CMD_MAXPOS 0x05
+
+#define EVT_SET 0x00
+#define EVT_CHGSTS 0x01
 
 #define RESP_NAK 0x55
 #define RESP_ACK 0xaa

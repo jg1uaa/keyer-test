@@ -8,6 +8,6 @@
 
 void unpack_events(struct event *, int, struct event *, int);
 struct event *find_event_entry(struct event *, int *, unsigned char, unsigned char);
-struct event *add_event_entry(struct event *, int, int);
+struct event *add_event_entry(struct event *, int, int, int);
 
 #endif

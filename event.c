@@ -14,7 +14,7 @@ void unpack_events(struct event *out, int entry_out, struct event *in, int entry
 
 		out[i].pos = i;
 		out[i].val = 0;
-		out[i].pad = 0;
+		out[i].evt = 0;
 	}
 
 	for (; i < entry_out; i++) {
@@ -22,12 +22,12 @@ void unpack_events(struct event *out, int entry_out, struct event *in, int entry
 
 		if (entry_in && i == in->pos) {
 			out[i].val = in->val;
-			out[i].pad = in->pad;
+			out[i].evt = in->evt;
 			in++;
 			entry_in--;
 		} else {
 			out[i].val = out[i - 1].val;
-			out[i].pad = out[i - 1].pad;
+			out[i].evt = out[i - 1].evt;
 		}			
 	}
 }
@@ -46,11 +46,11 @@ struct event *find_event_entry(struct event *ev, int *entry, unsigned char mask,
 	return NULL;
 }
 
-struct event *add_event_entry(struct event *ev, int pos, int val)
+struct event *add_event_entry(struct event *ev, int pos, int val, int evt)
 {
 	ev->pos = pos;
 	ev->val = val;
-	ev->pad = 0;
+	ev->evt = evt;
 
 	return ++ev;
 }

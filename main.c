@@ -85,13 +85,14 @@ static int get_ditdat_length(int fd, unsigned char mask, int *on_length, int *of
 
 	set_maxpos(fd, DITDAT_LEN);
 
-	ev = add_event_entry(eventbuf, 0, 0);
-	ev = add_event_entry(ev, DITDAT_POS, mask);
-	ev = add_event_entry(ev, DITDAT_LEN - 1, 0);
-	send_event_and_get_log(fd, 3);
+	ev = add_event_entry(eventbuf, 0, 0, EVT_SET);
+	ev = add_event_entry(ev, DITDAT_POS, mask, EVT_SET);
+	ev = add_event_entry(ev, 0, OUT_BIT, EVT_CHGSTS);
+	ev = add_event_entry(ev, DITDAT_LEN - 1, 0, EVT_SET);
+	send_event_and_get_log(fd, 4);
 
-	ev = &unpacked_log[DITDAT_POS];
-	n = DITDAT_LEN - DITDAT_POS;
+	ev = &unpacked_log[0];
+	n = DITDAT_LEN;
 	if (parse_event(ev, n, u) < 0)
 		return -1;
 
@@ -144,8 +145,8 @@ static int get_calibration_value(int fd, unsigned char mask, bool state)
 	
 	set_maxpos(fd, CALIB_LEN);
 
-	ev = add_event_entry(eventbuf, 0, state ? 0 : mask);
-	ev = add_event_entry(ev, CALIB_POS, state ? mask : 0);
+	ev = add_event_entry(eventbuf, 0, state ? 0 : mask, EVT_SET);
+	ev = add_event_entry(ev, CALIB_POS, state ? mask : 0, EVT_SET);
 	send_event_and_get_log(fd, 2);
 
 	ev = &unpacked_log[CALIB_POS];
