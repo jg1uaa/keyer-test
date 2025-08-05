@@ -134,7 +134,7 @@ static void do_ditdat_length(int fd)
 	       (double)dit_total / dit_on, (double)dit_total / dit_off);
 	printf("* dah: total=%d, total/on=%.3f, total/off=%.3f\n", dah_total,
 	       (double)dah_total / dah_on, (double)dah_total / dah_off);
-	printf("* dit total/dah total=%.3f\n", (double)dah_total / dit_total);
+	printf("* dah total/dit total=%.3f\n", (double)dah_total / dit_total);
 }
 
 static int get_calibration_value(int fd, unsigned char mask, bool state)
