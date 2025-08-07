@@ -23,8 +23,8 @@ static struct event eventbuf[MAX_ENTRY];
 static int calib_on_1 = 0, calib_off_1 = 0 , calib_on_2 = 0, calib_off_2 = 0;
 static int dit_on = 0, dit_off = 0, dah_on = 0, dah_off = 0;
 
-#define DITDAT_LEN 0x8000
-#define DITDAT_POS 0x0800
+#define DITDAH_LEN 0x8000
+#define DITDAH_POS 0x0800
 
 #define CALIB_LEN 0x2000
 #define CALIB_POS 0x0800
@@ -77,21 +77,21 @@ static int parse_event(struct event *ev, int entry, int *out, int size)
 	return j;
 }
 
-static int get_ditdat_length(int fd, unsigned char mask, int *on_length, int *off_length)
+static int get_ditdah_length(int fd, unsigned char mask, int *on_length, int *off_length)
 {
 	int i, n, u[RESULTS];
 	struct event *ev;
 
-	set_maxpos(fd, DITDAT_LEN);
+	set_maxpos(fd, DITDAH_LEN);
 
 	ev = add_event_entry(eventbuf, 0, 0, EVT_SET);
-	ev = add_event_entry(ev, DITDAT_POS, mask, EVT_SET);
+	ev = add_event_entry(ev, DITDAH_POS, mask, EVT_SET);
 	ev = add_event_entry(ev, 0, OUT_BIT, EVT_CHGSTS);
-	ev = add_event_entry(ev, DITDAT_LEN - 1, 0, EVT_SET);
+	ev = add_event_entry(ev, DITDAH_LEN - 1, 0, EVT_SET);
 	send_event_and_get_log(fd, 4);
 
 	ev = &unpacked_log[0];
-	n = DITDAT_LEN;
+	n = DITDAH_LEN;
 	if (parse_event(ev, n, u, RESULTS) < RESULTS)
 		return -1;
 
@@ -106,17 +106,17 @@ static int get_ditdat_length(int fd, unsigned char mask, int *on_length, int *of
 	return 0;
 }
 
-static void do_ditdat_length(int fd)
+static void do_ditdah_length(int fd)
 {
 	int dit_total, dah_total;
 
 
-	if (get_ditdat_length(fd, DIT_BIT, &dit_on, &dit_off) < 0) {
+	if (get_ditdah_length(fd, DIT_BIT, &dit_on, &dit_off) < 0) {
 		printf("dit too long\n");
 		return;
 	}
 
-	if (get_ditdat_length(fd, DAH_BIT, &dah_on, &dah_off) < 0) {
+	if (get_ditdah_length(fd, DAH_BIT, &dah_on, &dah_off) < 0) {
 		printf("dah too long\n");
 		return;
 	}
@@ -244,7 +244,7 @@ menu:
 		printf(CONFIG_FILE " saved\n");
 		break;
 	case '0':
-		do_ditdat_length(fd);
+		do_ditdah_length(fd);
 		break;
 	default:
 		break;
