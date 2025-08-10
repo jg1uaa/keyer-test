@@ -475,15 +475,19 @@ menu:
 	case '0':
 		do_ditdah_length(fd);
 		if (*buf == '0') break;
+		sleep(2);
 	case '1':
 		do_simple(fd);
 		if (*buf == '1') break;
+		sleep(2);
 	case '2':
 		do_ditdah_memory(fd);
 		if (*buf == '2') break;
+		sleep(2);
 	case '3':
 		do_squeeze(fd);
 		if (*buf == '3') break;
+		sleep(2);
 	default:
 		break;
 	}
