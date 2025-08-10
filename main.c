@@ -6,7 +6,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
-#include <curses.h>
 #include "serial.h"
 #include "event.h"
 #include "keyer-test-arduino.h"
@@ -22,6 +21,7 @@ static int packed_log_entry;
 static struct event eventbuf[MAX_ENTRY];
 static int calib_on_1 = 0, calib_off_1 = 0 , calib_on_2 = 0, calib_off_2 = 0;
 static int dit_on = 0, dit_off = 0, dah_on = 0, dah_off = 0;
+static int dit_total = 0, dah_total = 0;
 
 #define DITDAH_LEN 0x8000
 #define DITDAH_POS 0x0800
@@ -31,6 +31,13 @@ static int dit_on = 0, dit_off = 0, dah_on = 0, dah_off = 0;
 
 #define RESULTS 8
 
+//#define DEBUG
+#ifdef DEBUG
+#define DEBUG_PRINT(x) printf x
+#else
+#define DEBUG_PRINT(x) /* */
+#endif
+
 
 static void send_event_and_get_log(int fd, int event_entry)
 {
@@ -39,7 +46,6 @@ static void send_event_and_get_log(int fd, int event_entry)
 	packed_log_entry = read_log(fd, packed_log, MAX_POS);
 	unpack_events(unpacked_log, MAX_POS, packed_log, packed_log_entry);
 }
-
 
 static int parse_event(struct event *ev, int entry, int *out, int size)
 {
@@ -70,25 +76,129 @@ static int parse_event(struct event *ev, int entry, int *out, int size)
 	}
 	for (i = j; i < size; i++) out[i] = -1;
 
-	printf("#");
-	for (i = 0; i < size; i++) printf(" %d", out[i]);
-	printf("\n");
+	DEBUG_PRINT(("#"));
+	for (i = 0; i < size; i++) DEBUG_PRINT((" %d", out[i]));
+	DEBUG_PRINT(("\n"));
 
 	return j;
+}
+
+static char detect_element(int v)
+{
+#define RANGE 10
+#define DIFF(x, t) ((((x) - t) * 100) / (t))
+	
+	if (v < 0) return ' ';
+	else if (DIFF(v, dit_total / 2) >= -10 &&
+		 DIFF(v, dit_total / 2) <= 10) return '.';
+	else return '-';
+}
+
+static char *check_ditdah_memory(int fd, unsigned char sig0, int sig0_on_delay, int sig0_off_delay, unsigned char sig1, int sig1_on_delay, int sig1_off_delay, int offset, int width)
+{
+	int n, t0, t1, m, u[RESULTS];
+	static char result_str[RESULTS / 2 + 1];
+	struct event *ev, *ev0;
+
+	set_maxpos(fd, DITDAH_LEN);
+
+	ev = add_event_entry(ev0 = eventbuf, 0, 0, EVT_SET);
+	ev = add_event_entry(ev, DITDAH_POS, sig0, EVT_SET);
+	ev = add_event_entry(ev, 0, OUT_BIT, EVT_CHGSTS);
+	ev = add_event_entry(ev, 1, sig0, EVT_SET);
+	if (sig1) {
+		ev = add_event_entry(ev, offset - sig1_on_delay,
+				     sig0 | sig1, EVT_SET);
+	}
+
+	t0 = offset + width - sig0_off_delay;
+	t1 = offset + width - sig1_off_delay;
+	if (!sig1 || t0 == t1) {
+		// no sig1, or sig0 and sig1 same timing
+		m = 0;
+	} else if (t0 < t1) {
+		// sig0 first
+		m = sig1;
+	} else {
+		// sig1 first
+		m = sig0;
+		n = t1;
+		t1 = t0;
+		t0 = n;
+	}
+	ev = add_event_entry(ev, t0, m, EVT_SET);
+	if (m)
+		ev = add_event_entry(ev, t1, 0, EVT_SET);
+
+	send_event_and_get_log(fd, ev - ev0);
+
+	ev = &unpacked_log[0];
+	n = DITDAH_LEN;
+	parse_event(ev, n, u, RESULTS);
+
+	for (n = 0; n < RESULTS / 2; n++)
+		result_str[n] = detect_element(u[n * 2]);
+	result_str[n] = '\0';
+
+	return result_str;
+}
+
+static void do_ditdah_memory(int fd)
+{
+	int i, width, offset, step, extra;
+
+	offset = dit_total / 16;
+	width = dit_total / 8;
+	step = dit_total / 4;
+	extra = dit_total / 2;
+
+	printf("* dit/dah memory\n");
+
+	for (i = offset; i < dit_total + extra; i += step) {
+		printf("dit on, dah %2d/%2d\t%s\n",
+		       (i / step) + 1, dit_total / step,
+		       check_ditdah_memory(fd,
+					   DIT_BIT, calib_on_1, calib_off_1,
+					   DAH_BIT, calib_on_2, calib_off_2,
+					   i, width));
+	}
+	for (i = offset; i < dah_total + extra; i += step) {
+		printf("dah on, dit %2d/%2d\t%s\n",
+		       (i / step) + 1, dah_total / step,
+		       check_ditdah_memory(fd,
+					   DAH_BIT, calib_on_2, calib_off_2,
+					   DIT_BIT, calib_on_1, calib_off_1,
+					   i, width));
+	}
+
+	for (i = offset; i < dit_total + extra; i += step) {
+		printf("dit 1-%2d/%2d\t%s\n", (i / step) + 1, dit_total / step,
+		       check_ditdah_memory(fd,
+					   DIT_BIT, calib_on_1, calib_off_1,
+					   0, calib_on_2, calib_off_2,
+					   i, width));
+	}
+	for (i = offset; i < dah_total + extra; i += step) {
+		printf("dah 1-%2d/%2d\t%s\n", (i / step) + 1, dah_total / step,
+		       check_ditdah_memory(fd,
+					   DAH_BIT, calib_on_2, calib_off_2,
+					   0, calib_on_1, calib_off_1,
+					   i, width));
+	}
 }
 
 static int get_ditdah_length(int fd, unsigned char mask, int *on_length, int *off_length)
 {
 	int i, n, u[RESULTS];
-	struct event *ev;
+	struct event *ev, *ev0;
 
 	set_maxpos(fd, DITDAH_LEN);
 
-	ev = add_event_entry(eventbuf, 0, 0, EVT_SET);
+	ev = add_event_entry(ev0 = eventbuf, 0, 0, EVT_SET);
 	ev = add_event_entry(ev, DITDAH_POS, mask, EVT_SET);
 	ev = add_event_entry(ev, 0, OUT_BIT, EVT_CHGSTS);
 	ev = add_event_entry(ev, DITDAH_LEN - 1, 0, EVT_SET);
-	send_event_and_get_log(fd, 4);
+	send_event_and_get_log(fd, ev - ev0);
 
 	ev = &unpacked_log[0];
 	n = DITDAH_LEN;
@@ -108,8 +218,7 @@ static int get_ditdah_length(int fd, unsigned char mask, int *on_length, int *of
 
 static void do_ditdah_length(int fd)
 {
-	int dit_total, dah_total;
-
+	printf("* dit/dah length\n");
 
 	if (get_ditdah_length(fd, DIT_BIT, &dit_on, &dit_off) < 0) {
 		printf("dit too long\n");
@@ -121,20 +230,20 @@ static void do_ditdah_length(int fd)
 		return;
 	}
 
-	printf("* dit: on=%d, off=%d, on/off=%.3f\n",
+	printf("dit: on=%d, off=%d, on/off=%.3f\n",
 	       dit_on, dit_off, (double)dit_on / dit_off);
-	printf("* dah: on=%d, off=%d, on/off=%.3f\n",
+	printf("dah: on=%d, off=%d, on/off=%.3f\n",
 	       dah_on, dah_off, (double)dah_on / dah_off);
-	printf("* dah/dit: %.3f\n", (double)dah_on / dit_on);
+	printf("dah/dit: %.3f\n", (double)dah_on / dit_on);
 
 	dit_total = dit_on + dit_off;
 	dah_total = dah_on + dah_off;
 
-	printf("* dit: total=%d, total/on=%.3f, total/off=%.3f\n",  dit_total,
+	printf("dit: total=%d, total/on=%.3f, total/off=%.3f\n",  dit_total,
 	       (double)dit_total / dit_on, (double)dit_total / dit_off);
-	printf("* dah: total=%d, total/on=%.3f, total/off=%.3f\n", dah_total,
+	printf("dah: total=%d, total/on=%.3f, total/off=%.3f\n", dah_total,
 	       (double)dah_total / dah_on, (double)dah_total / dah_off);
-	printf("* dah total/dit total=%.3f\n", (double)dah_total / dit_total);
+	printf("dah total/dit total=%.3f\n", (double)dah_total / dit_total);
 }
 
 static int get_calibration_value(int fd, unsigned char mask, bool state)
@@ -190,8 +299,8 @@ static int save_config(void)
 
 static void disp_config(void)
 {
-	printf("# relay_1: on=%d, off=%d\n", calib_on_1, calib_off_1);
-	printf("# relay_2: on=%d, off=%d\n", calib_on_2, calib_off_2);
+	DEBUG_PRINT(("# relay_1: on=%d, off=%d\n", calib_on_1, calib_off_1));
+	DEBUG_PRINT(("# relay_2: on=%d, off=%d\n", calib_on_2, calib_off_2));
 }
 
 static void do_calibration(int fd)
@@ -226,6 +335,7 @@ menu:
 	printf("\n");
 	printf("menu:\n");
 	printf("0) check dit/dah length\n");
+	printf("1) check dit/dah memory\n");
 	printf("c) calibration\n");
 	printf("x) exit\n");
 
@@ -245,6 +355,9 @@ menu:
 		break;
 	case '0':
 		do_ditdah_length(fd);
+		break;
+	case '1':
+		do_ditdah_memory(fd);
 		break;
 	default:
 		break;
