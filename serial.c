@@ -128,8 +128,8 @@ int open_serial(char *serdev)
 		goto fin0;
 
 	memset(&t, 0, sizeof(t));
-	cfsetospeed(&t, 38400);
-	cfsetispeed(&t, 38400);
+	cfsetospeed(&t, B38400);
+	cfsetispeed(&t, B38400);
 
 	t.c_cflag |= CREAD | CLOCAL | CS8;
 	t.c_iflag = INPCK;
