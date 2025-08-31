@@ -22,6 +22,7 @@ static struct event eventbuf[MAX_ENTRY];
 static int calib_on_1 = 0, calib_off_1 = 0 , calib_on_2 = 0, calib_off_2 = 0;
 static int dit_on = 0, dit_off = 0, dah_on = 0, dah_off = 0;
 static int dit_total = 0, dah_total = 0;
+static bool verbose = false;
 
 #define DITDAH_LEN 0x8000
 #define DITDAH_POS 0x2000
@@ -159,7 +160,7 @@ static void do_squeeze(int fd)
 			      DIT_BIT, calib_on_1, calib_off_1,
 			      DAH_BIT, calib_on_2, calib_off_2,
 			      i, width, result_str2, SQ_RESULTS);
-		if (!strcmp(result_str1, result_str2)) continue;
+		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dit + dah %2d/%2d\t%s\n",
 		       (i / step) + 1, total / step, result_str1);
@@ -171,7 +172,7 @@ static void do_squeeze(int fd)
 			      DAH_BIT, calib_on_2, calib_off_2,
 			      DIT_BIT, calib_on_1, calib_off_1,
 			      i, width, result_str2, SQ_RESULTS);
-		if (!strcmp(result_str1, result_str2)) continue;
+		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dah + dit %2d/%2d\t%s\n",
 		       (i / step) + 1, total / step, result_str1);
@@ -245,7 +246,7 @@ static void do_simple(int fd)
 				    DIT_BIT, calib_on_1, calib_off_1,
 				    0, calib_on_2, calib_off_2,
 				    i, width, result_str2, RESULTS);
-		if (!strcmp(result_str1, result_str2)) continue;
+		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dit 1-%2d/%2d\t%s\n",
 		       (i / step) + 1, dit_total / step, result_str1);
@@ -257,7 +258,7 @@ static void do_simple(int fd)
 				    DAH_BIT, calib_on_2, calib_off_2,
 				    0, calib_on_1, calib_off_1,
 				    i, width, result_str2, RESULTS);
-		if (!strcmp(result_str1, result_str2)) continue;
+		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dah 1-%2d/%2d\t%s\n",
 		       (i / step) + 1, dah_total / step, result_str1);
@@ -282,7 +283,7 @@ static void do_ditdah_memory(int fd)
 				    DIT_BIT, calib_on_1, calib_off_1,
 				    DAH_BIT, calib_on_2, calib_off_2,
 				    i, width, result_str2, RESULTS);
-		if (!strcmp(result_str1, result_str2)) continue;
+		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dit on, dah %2d/%2d\t%s\n",
 		       (i / step) + 1, dit_total / step, result_str1);
@@ -294,7 +295,7 @@ static void do_ditdah_memory(int fd)
 				    DAH_BIT, calib_on_2, calib_off_2,
 				    DIT_BIT, calib_on_1, calib_off_1,
 				    i, width, result_str2, RESULTS);
-		if (!strcmp(result_str1, result_str2)) continue;
+		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dah on, dit %2d/%2d\t%s\n",
 		       (i / step) + 1, dah_total / step, result_str1);
@@ -454,6 +455,7 @@ menu:
 	printf("2) check dit/dah memory\n");
 	printf("3) check squeeze\n");
 	printf("c) calibration\n");
+	printf("v) verbose output %s\n", verbose ? "off" : "on");
 	printf("x) exit\n");
 
 	printf("-> ");
@@ -463,6 +465,10 @@ menu:
 	case 'x':
 	case 'X':
 		return 0;
+	case 'v':
+	case 'V':
+		verbose = !verbose;
+		break;
 	case 'c':
 	case 'C':
 		do_calibration(fd);
