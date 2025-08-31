@@ -30,6 +30,7 @@ static bool verbose = false;
 #define CALIB_LEN 0x2000
 #define CALIB_POS 0x0800
 
+#define STEP 4
 #define RESULTS 8
 
 //#define DEBUG
@@ -144,18 +145,19 @@ static void do_squeeze(int fd)
 {
 #define SQ_RESULTS 10
 
-	int i, width, offset, step, total;
+	int n;
+	double i, width, offset, step, total;
 	char result_str1[SQ_RESULTS / 2 + 1], result_str2[SQ_RESULTS / 2 + 1];
 
-	offset = dit_total / 16;
-	width = dit_total / 8;
-	step = dit_total / 4;
+	offset = dit_total / (STEP * 4);
+	width = dit_total / (STEP * 2);
+	step = dit_total / STEP;
 	total = dit_total + dah_total;
 
 	printf("* squeeze\n");
 
 	memset(result_str1, 0, sizeof(result_str1));
-	for (i = offset; i < total * 2; i += step) {
+	for (n = 1, i = offset; i < total * 2; n++, i += step) {
 		check_squeeze(fd,
 			      DIT_BIT, calib_on_1, calib_off_1,
 			      DAH_BIT, calib_on_2, calib_off_2,
@@ -163,11 +165,11 @@ static void do_squeeze(int fd)
 		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dit + dah %2d/%2d\t%s\n",
-		       (i / step) + 1, total / step, result_str1);
+		       n, (int)(total / step), result_str1);
 	}
 
 	memset(result_str1, 0, sizeof(result_str1));
-	for (i = offset; i < total * 2; i += step) {
+	for (n = 1, i = offset; i < total * 2; n++, i += step) {
 		check_squeeze(fd,
 			      DAH_BIT, calib_on_2, calib_off_2,
 			      DIT_BIT, calib_on_1, calib_off_1,
@@ -175,7 +177,7 @@ static void do_squeeze(int fd)
 		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dah + dit %2d/%2d\t%s\n",
-		       (i / step) + 1, total / step, result_str1);
+		       n, (int)(total / step), result_str1);
 	}
 }
 
@@ -230,18 +232,18 @@ static char *check_ditdah_memory(int fd, unsigned char sig0, int sig0_on_delay, 
 
 static void do_simple(int fd)
 {
-	int i, width, offset, step, extra;
+	int n;
+	double i, width, offset, step;
 	char result_str1[RESULTS / 2 + 1], result_str2[RESULTS / 2 + 1];
 
-	offset = dit_total / 16;
-	width = dit_total / 8;
-	step = dit_total / 4;
-	extra = dit_total / 2;
+	offset = dit_total / (STEP * 4);
+	width = dit_total / (STEP * 2);
+	step = dit_total / STEP;
 
 	printf("* simple\n");
 
 	memset(result_str1, 0, sizeof(result_str1));
-	for (i = offset; i < dit_total + extra; i += step) {
+	for (n = 1, i = offset; i < dit_total * 2; n++, i += step) {
 		check_ditdah_memory(fd,
 				    DIT_BIT, calib_on_1, calib_off_1,
 				    0, calib_on_2, calib_off_2,
@@ -249,11 +251,11 @@ static void do_simple(int fd)
 		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dit 1-%2d/%2d\t%s\n",
-		       (i / step) + 1, dit_total / step, result_str1);
+		       n, (int)(dit_total / step), result_str1);
 	}
 
 	memset(result_str1, 0, sizeof(result_str1));
-	for (i = offset; i < dah_total + extra; i += step) {
+	for (n = 1, i = offset; i < dah_total * 2; n++, i += step) {
 		check_ditdah_memory(fd,
 				    DAH_BIT, calib_on_2, calib_off_2,
 				    0, calib_on_1, calib_off_1,
@@ -261,24 +263,24 @@ static void do_simple(int fd)
 		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dah 1-%2d/%2d\t%s\n",
-		       (i / step) + 1, dah_total / step, result_str1);
+		       n, (int)(dah_total / step), result_str1);
 	}
 }
 
 static void do_ditdah_memory(int fd)
 {
-	int i, width, offset, step, extra;
+	int n;
+	double i, width, offset, step;
 	char result_str1[RESULTS / 2 + 1], result_str2[RESULTS / 2 + 1];
 
-	offset = dit_total / 16;
-	width = dit_total / 8;
-	step = dit_total / 4;
-	extra = dit_total / 2;
+	offset = dit_total / (STEP * 4);
+	width = dit_total / (STEP * 2);
+	step = dit_total / STEP;
 
 	printf("* dit/dah memory\n");
 
 	memset(result_str1, 0, sizeof(result_str1));
-	for (i = offset; i < dit_total + extra; i += step) {
+	for (n = 1, i = offset; i < dit_total * 2; n++, i += step) {
 		check_ditdah_memory(fd,
 				    DIT_BIT, calib_on_1, calib_off_1,
 				    DAH_BIT, calib_on_2, calib_off_2,
@@ -286,11 +288,11 @@ static void do_ditdah_memory(int fd)
 		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dit on, dah %2d/%2d\t%s\n",
-		       (i / step) + 1, dit_total / step, result_str1);
+		       n, (int)(dit_total / step), result_str1);
 	}
 
 	memset(result_str1, 0, sizeof(result_str1));
-	for (i = offset; i < dah_total + extra; i += step) {
+	for (n = 1, i = offset; i < dah_total * 2; n++, i += step) {
 		check_ditdah_memory(fd,
 				    DAH_BIT, calib_on_2, calib_off_2,
 				    DIT_BIT, calib_on_1, calib_off_1,
@@ -298,7 +300,7 @@ static void do_ditdah_memory(int fd)
 		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dah on, dit %2d/%2d\t%s\n",
-		       (i / step) + 1, dah_total / step, result_str1);
+		       n, (int)(dah_total / step), result_str1);
 	}
 }
 
