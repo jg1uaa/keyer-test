@@ -230,6 +230,36 @@ static char *check_ditdah_memory(int fd, unsigned char sig0, int sig0_on_delay, 
 	return result_str;
 }
 
+static char *check_ditdah_memory2(int fd, unsigned char sig0, int sig0_on_delay, int sig0_off_delay, unsigned char sig1, int sig1_on_delay, int sig1_off_delay, int offset, int width, char *result_str, int results)
+{
+	int n, *u;
+	struct event *ev, *ev0;
+
+	set_maxpos(fd, DITDAH_LEN);
+
+	ev = add_event_entry(ev0 = eventbuf, 0, 0, EVT_SET);
+	ev = add_event_entry(ev, DITDAH_POS, sig0, EVT_SET);
+	ev = add_event_entry(ev, 0, OUT_BIT, EVT_CHGSTS);
+
+	// different from check_ditdah_memory(), non-squeeze
+	ev = add_event_entry(ev, 1, 0, EVT_SET);
+	ev = add_event_entry(ev, offset - sig1_on_delay, sig1, EVT_SET);
+	ev = add_event_entry(ev, offset + width - sig1_off_delay, 0, EVT_SET);
+
+	send_event_and_get_log(fd, ev - ev0);
+
+	ev = &unpacked_log[0];
+	n = DITDAH_LEN;
+	u = alloca(sizeof(int) * results);
+	parse_event(ev, n, u, results);
+
+	for (n = 0; n < results / 2; n++)
+		result_str[n] = detect_element(u[n * 2]);
+	result_str[n] = '\0';
+
+	return result_str;
+}
+
 static void do_simple(int fd)
 {
 	int n;
@@ -300,6 +330,43 @@ static void do_ditdah_memory(int fd)
 		if (!verbose && !strcmp(result_str1, result_str2)) continue;
 		strcpy(result_str1, result_str2);
 		printf("dah on, dit %2d/%2d\t%s\n",
+		       n, (int)(dah_total / step), result_str1);
+	}
+}
+
+static void do_ditdah_memory2(int fd)
+{
+	int n;
+	double i, width, offset, step;
+	char result_str1[RESULTS / 2 + 1], result_str2[RESULTS / 2 + 1];
+
+	offset = dit_total / (STEP * 4);
+	width = dit_total / (STEP * 2);
+	step = dit_total / STEP;
+
+	printf("* dit/dah memory (non-squeeze)\n");
+
+	memset(result_str1, 0, sizeof(result_str1));
+	for (n = 1, i = offset; i < dit_total; n++, i += step) {
+		check_ditdah_memory2(fd,
+				     DIT_BIT, calib_on_1, calib_off_1,
+				     DAH_BIT, calib_on_2, calib_off_2,
+				     i, width, result_str2, RESULTS);
+		if (!verbose && !strcmp(result_str1, result_str2)) continue;
+		strcpy(result_str1, result_str2);
+		printf("dit -> dah %2d/%2d\t%s\n",
+		       n, (int)(dit_total / step), result_str1);
+	}
+
+	memset(result_str1, 0, sizeof(result_str1));
+	for (n = 1, i = offset; i < dah_total; n++, i += step) {
+		check_ditdah_memory2(fd,
+				     DAH_BIT, calib_on_2, calib_off_2,
+				     DIT_BIT, calib_on_1, calib_off_1,
+				     i, width, result_str2, RESULTS);
+		if (!verbose && !strcmp(result_str1, result_str2)) continue;
+		strcpy(result_str1, result_str2);
+		printf("dah -> dit %2d/%2d\t%s\n",
 		       n, (int)(dah_total / step), result_str1);
 	}
 }
@@ -456,6 +523,7 @@ menu:
 	printf("1) check simple timing\n");
 	printf("2) check dit/dah memory\n");
 	printf("3) check squeeze\n");
+	printf("4) check dit/dah memory (non-squeeze)\n");
 	printf("c) calibration\n");
 	printf("v) verbose output %s\n", verbose ? "off" : "on");
 	printf("x) exit\n");
@@ -495,6 +563,10 @@ menu:
 	case '3':
 		do_squeeze(fd);
 		if (*buf == '3') break;
+		sleep(2);
+	case '4':
+		do_ditdah_memory2(fd);
+		if (*buf == '4') break;
 		sleep(2);
 	default:
 		break;
