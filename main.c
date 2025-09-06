@@ -307,7 +307,7 @@ static void do_ditdah_memory(int fd)
 	width = dit_total / (STEP * 2);
 	step = dit_total / STEP;
 
-	printf("* dit/dah memory\n");
+	printf("* dit/dah memory (squeeze)\n");
 
 	memset(result_str1, 0, sizeof(result_str1));
 	for (n = 1, i = offset; i < dit_total * 2; n++, i += step) {
@@ -521,9 +521,9 @@ menu:
 	printf("a) do all tests\n");
 	printf("0) check dit/dah length\n");
 	printf("1) check simple timing\n");
-	printf("2) check dit/dah memory\n");
-	printf("3) check squeeze\n");
-	printf("4) check dit/dah memory (non-squeeze)\n");
+	printf("2) check dit/dah memory (non-squeeze)\n");
+	printf("3) check dit/dah memory (squeeze)\n");
+	printf("4) check squeeze\n");
 	printf("c) calibration\n");
 	printf("v) verbose output %s\n", verbose ? "off" : "on");
 	printf("x) exit\n");
@@ -557,15 +557,15 @@ menu:
 		if (*buf == '1') break;
 		sleep(2);
 	case '2':
-		do_ditdah_memory(fd);
+		do_ditdah_memory2(fd);
 		if (*buf == '2') break;
 		sleep(2);
 	case '3':
-		do_squeeze(fd);
+		do_ditdah_memory(fd);
 		if (*buf == '3') break;
 		sleep(2);
 	case '4':
-		do_ditdah_memory2(fd);
+		do_squeeze(fd);
 		if (*buf == '4') break;
 		sleep(2);
 	default:
