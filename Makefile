@@ -4,6 +4,10 @@ CFLAGS = -O2 -Wall -c -fdata-sections -ffunction-sections
 LFLAGS = -Wl,--gc-sections
 LDLIBS = 
 
+ifeq ($(DEBUG), true)
+	CFLAGS += -DDEBUG
+endif
+
 all: $(TARGET)
 
 event.o: event.c
