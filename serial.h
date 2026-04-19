@@ -5,7 +5,6 @@
 #define SERIAL_H
 
 #include "keyer-test-arduino.h"
-#include "serial.h"
 
 int set_maxpos(int, int);
 int start_log(int);
